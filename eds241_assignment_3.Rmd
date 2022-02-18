@@ -119,8 +119,6 @@ covariates will create 2*2*2*2 = 16 cells. Report the estimated average treatmen
 smoking on birthweight using the exact matching estimator and its linear regression analogue 
 
 
-Estimated Average Treatment Effect: 226 grams
-
 
 ```{r}
 data_mutated <- data %>%
@@ -135,4 +133,43 @@ summary(regress_data_mutated)
 
 ```
 
+```{r}
+TIA_table <- data_mutated %>%
+  group_by(g, tobacco)%>% 
+  summarise(n_obs = n(),
+            Y_mean= mean(birthwgt, na.rm = T))%>% #Calculate number of observations and Y mean by X by treatment cells
+  gather(variables, values, n_obs:Y_mean)%>% #Reshape data
+  mutate(variables = paste0(variables,"_",tobacco, sep=""))%>% #Combine the treatment and variables for reshaping
+  pivot_wider(id_cols = g, names_from = variables,values_from = values)%>% #Reshape data by treatment and X cell
+  ungroup()%>%  #Ungroup from X values
+  mutate(Y_diff = Y_mean_1 - Y_mean_0, #calculate Y_diff
+         w_ATE = (n_obs_0+n_obs_1)/(sum(n_obs_0)+sum(n_obs_1)),
+         w_ATT = n_obs_1/sum(n_obs_1))%>% #calculate weights
+  mutate_if(is.numeric, round, 2) #Round data
+
+
+stargazer(TIA_table, type= "text", summary = FALSE, digits = 2)
+
+# MULTIVARIATE MATCHING ESTIMATES OF ATE AND ATT
+ATE=sum((TIA_table$w_ATE)*(TIA_table$Y_diff))
+ATE
+ATT=sum((TIA_table$w_ATT)*(TIA_table$Y_diff))
+ATT
+```
+
+
+
+
+d) Estimate the propensity score for maternal smoking using a logit estimator and based on the
+following specification: mother’s age, mother’s age squared, mother’s education, and indicators
+for mother’s race, and alcohol consumption. 
+
+```{r}
+glm(formula, family = binomial(), data)
+```
+
+
+```{r}
+EPS <- predict(ps_model, type = "response")
+```
 
