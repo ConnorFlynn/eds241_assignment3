@@ -1,0 +1,138 @@
+---
+title: "EDS241: Assignment 3"
+author: "Connor Flynn"
+date: '`r format(Sys.time(), "%m/%d/%Y")`'
+output: 
+  pdf_document:
+    toc: false
+    number_sections: yes
+header-includes:
+  - \setlength{\parindent}{1em}
+  - \usepackage{float}
+--- 
+  
+``` {r setup, echo = FALSE, message = FALSE, warning = FALSE}
+
+# set default chunk options
+knitr::opts_chunk$set(fig.width = 4, fig.height = 3, 
+                      echo = TRUE, message = FALSE, warning = FALSE)
+
+
+# load packages
+packages=c("stargazer", "here", "tidyr", "dplyr","stringr", "janitor", 
+           "cowplot", "ggplot2", "tinytex", "datasets", "tibble")
+
+for (i in packages) {
+  if (require(i,character.only=TRUE)==FALSE) {
+    install.packages(i,repos='http://cran.us.r-project.org')
+  }
+  else {
+    require(i,character.only=TRUE)
+  }
+}
+
+#devtools::install_github('rstudio/rmarkdown')
+options(scipen=999) # not scientific notation
+
+
+```
+
+
+```{r}
+data <- read.csv(here("data/SMOKING_EDS241.csv"))
+```
+
+
+
+a) What is the unadjusted mean difference in birth weight of infants with smoking and nonsmoking mothers?
+
+
+```{r}
+smoking <- data %>% 
+  filter(tobacco == 1)
+
+
+mean_birthwgt_smoking <- mean(smoking$birthwgt)
+
+mean_birthwgt_smoking
+```
+
+
+```{r}
+non_smoking <- data %>% 
+  filter(tobacco == 0)
+
+
+mean_birthwgt_non_smoking <- mean(non_smoking$birthwgt)
+
+mean_birthwgt_non_smoking
+```
+
+```{r}
+mean_birthwgt_non_smoking - mean_birthwgt_smoking
+```
+
+The unadjusted mean difference in birth weight of infants with smoking and non smoking mothers is 244.54 grams.
+
+
+Under what assumption does this correspond to the average treatment effect of maternal smoking during pregnancy on infant birth weight? 
+
+This corresponds with the treatment ignorability assumption
+
+
+Provide some simple empirical evidence for or against this hypothesis.
+
+```{r}
+empirical_regression <- lm(alcohol ~ tobacco, data = data)
+
+
+summary(empirical_regression)
+```
+
+
+
+
+b) Assume that maternal smoking is randomly assigned conditional on the observable
+covariates listed above. Estimate the effect of maternal smoking on birth weight using a linear
+regression. Report the estimated coefficient on tobacco and its standard error.
+
+
+Estimated Coefficient: 228.07 grams
+Standard Error: 11.93
+
+```{r}
+regress_1 <- lm(birthwgt ~ tobacco + mage + meduc + mblack + alcohol + first + diabete + anemia, data = data)
+summary(regress_1)
+```
+
+```{r}
+plot(regress_1)
+```
+
+
+
+c) Use the exact matching estimator to estimate the effect of maternal smoking on birth weight.
+For simplicity, consider the following covariates in your matching estimator: create a 0-1
+indicator for mother's age (=1 if mage>=34), and a 0-1 indicator for mother's education (1 if
+meduc>=16), mother's race (mblack), and alcohol consumption indicator (alcohol). These 4
+covariates will create 2*2*2*2 = 16 cells. Report the estimated average treatment effect of
+smoking on birthweight using the exact matching estimator and its linear regression analogue 
+
+
+Estimated Average Treatment Effect: 226 grams
+
+
+```{r}
+data_mutated <- data %>%
+  mutate(mage_above = ifelse(mage >= 34, c(1), c(0))) %>% 
+  mutate(meduc_above = ifelse(meduc>= 16, c(1), c(0))) %>% 
+  mutate(alcohol_yes = ifelse(alcohol == 1, c(1), c(0))) %>% 
+  mutate(mblack_yes = ifelse(mblack == 1, c(1), c(0))) %>% 
+  mutate(g = paste0(mage_above,meduc_above,alcohol_yes,mblack_yes))
+
+regress_data_mutated <- lm(birthwgt ~ tobacco + factor(g), data_mutated)
+summary(regress_data_mutated)
+
+```
+
+
